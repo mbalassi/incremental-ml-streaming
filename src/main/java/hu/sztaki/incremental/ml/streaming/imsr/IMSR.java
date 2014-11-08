@@ -17,7 +17,7 @@
 
 package hu.sztaki.incremental.ml.streaming.imsr;
 
-import org.apache.commons.math.linear.LUDecompositionImpl;
+import org.apache.commons.math.linear.SingularValueDecompositionImpl;
 import org.apache.commons.math.linear.Array2DRowRealMatrix;
 import org.apache.commons.math.linear.RealMatrix;
 import org.apache.flink.api.common.functions.MapFunction;
@@ -38,9 +38,21 @@ public class IMSR {
 		// set up the execution environment
 		final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 
+		// get arguments
+		String fileName = "src/test/resources/1.csv";
+		int batchSize = 5;
+		if(args.length > 0)
+		{
+			fileName = args[0];
+			if(args.length > 1)
+			{
+				batchSize = Integer.parseInt(args[1]);
+			}
+		}
+		
 		// get input data
 		DataStream<Tuple2<double[][], double[][]>> stream = env.addSource(
-				new MatrixVectorPairSource("src/test/resources/1.csv", 1, 5), 1);
+				new MatrixVectorPairSource(fileName, batchSize), 1);
 		
 		MatrixSink sink = new MatrixSink();
 		
@@ -107,7 +119,8 @@ public class IMSR {
 		public void invoke(Tuple2<double[][], double[][]> value) {
 			Array2DRowRealMatrix M = new Array2DRowRealMatrix(value.f0);
 			Array2DRowRealMatrix v = new Array2DRowRealMatrix(value.f1);
-			Array2DRowRealMatrix invM = new Array2DRowRealMatrix(new LUDecompositionImpl(M).getSolver().getInverse().getData());
+			Array2DRowRealMatrix invM = new Array2DRowRealMatrix(
+					new SingularValueDecompositionImpl(M).getSolver().getInverse().getData());
 			Array2DRowRealMatrix beta = invM.multiply(v);
 			printVector(beta);
 		}

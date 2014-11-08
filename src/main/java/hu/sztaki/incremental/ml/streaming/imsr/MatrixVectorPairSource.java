@@ -18,7 +18,9 @@
 package hu.sztaki.incremental.ml.streaming.imsr;
 
 import java.io.File;
+import java.util.Locale;
 import java.util.Scanner;
+import java.util.regex.Pattern;
 
 import org.apache.commons.math.linear.Array2DRowRealMatrix;
 import org.apache.commons.math.linear.RealMatrix;
@@ -32,12 +34,18 @@ public class MatrixVectorPairSource implements SourceFunction<Tuple2<double[][],
 	
 	private String path;
 	private int indepDim;
-	private int windowSize;
+	private int batchSize;
 	
-	public MatrixVectorPairSource(String path, int indepDim, int windowSize) {
+	public MatrixVectorPairSource(String path, int batchSize) {
 		this.path=path;
-		this.indepDim=indepDim;
-		this.windowSize=windowSize;
+		this.batchSize=batchSize;
+	}
+	
+	private static Scanner initCsvScanner(Scanner s)
+	{
+		s.useLocale(Locale.ENGLISH);
+		s.useDelimiter("(\\s+|\\s*,\\s*)");
+		return s;
 	}
 	
 	@Override
@@ -48,11 +56,15 @@ public class MatrixVectorPairSource implements SourceFunction<Tuple2<double[][],
 			System.err.println(path + " does not exist.");
 			System.exit(1);
 		}
-		Scanner s = new Scanner(f);
+		Scanner s = initCsvScanner(new Scanner(f));
+		String firstLine = s.nextLine();
+		Scanner firstLineScanner = initCsvScanner(new Scanner(firstLine));
+		for(indepDim = 0; firstLineScanner.hasNext(); firstLineScanner.next(), indepDim++);
+		indepDim--;
 		while(s.hasNext())
 		{
-			Array2DRowRealMatrix X = new Array2DRowRealMatrix(windowSize, indepDim);
-			Array2DRowRealMatrix y = new Array2DRowRealMatrix(windowSize, 1);
+			Array2DRowRealMatrix X = new Array2DRowRealMatrix(batchSize, indepDim);
+			Array2DRowRealMatrix y = new Array2DRowRealMatrix(batchSize, 1);
 			readMatricesSideBySide(s, X, y);
 			out.collect(new Tuple2<double[][], double[][]>(X.getDataRef(),y.getDataRef()));
 		}
@@ -69,7 +81,7 @@ public class MatrixVectorPairSource implements SourceFunction<Tuple2<double[][],
 				return; //there will be some 0 rows
 			}
 			String line = scanner.nextLine();
-			Scanner lineScanner = new Scanner(line);
+			Scanner lineScanner = initCsvScanner(new Scanner(line));
 			for(RealMatrix m : matrices)
 			{
 				for(int j = 0; j<m.getColumnDimension(); j++)
