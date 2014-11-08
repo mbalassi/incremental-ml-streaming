@@ -83,7 +83,7 @@ public class TwitterRegression {
 	}
 
 	
-	public static final class TwitterMatrixCreator
+	public static class TwitterMatrixCreator
 	implements GroupReduceFunction<Tuple2<Double, Double>, Tuple2<double[][], double[][]>>
 	{
 		private static final long serialVersionUID = 1143426179541008899L;
